@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run src",
     "typecheck": "tsc --noEmit",
-    "test:db": "vitest run tests"
+    "test:db": "vitest run tests",
+    "invite": "node --env-file=.env.local scripts/create-invite.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

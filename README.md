@@ -8,11 +8,9 @@ App web multi-utente per tracciare patrimonio (liquidità, ETF, crypto, crediti)
 
 | Milestone | Stato |
 |---|---|
-| **M1** base: auth, RLS, asset, movimenti, categorie, snapshot manuali, 3 viste, test di calcolo | fatto (vedi sotto cosa manca) |
+| **M1** base: auth, RLS, asset, movimenti, categorie, snapshot manuali, 3 viste, test di calcolo | fatto |
 | **M2** prezzi automatici (strumenti, job giornaliero, snapshot automatici) | fatto, vedi "Prezzi automatici" (EODHD/Alpha Vantage non ancora provati con una chiave reale) |
-| **M3** apertura agli amici (onboarding, demo, inviti, export JSON, cancellazione account, PWA) | da fare |
-
-Manca ancora in M1: gestione categorie dall'interfaccia (il DB le crea già alla registrazione), import CSV/JSON.
+| **M3** apertura agli amici (onboarding, demo, inviti, export JSON, cancellazione account, PWA) | fatto nel codice; manca il deploy (vedi sotto) |
 
 ## Avvio in locale
 
@@ -29,6 +27,34 @@ pnpm dev                     # http://localhost:3000
 - La registrazione è **solo su invito**. Crea un codice in locale:
   `insert into invite_codes (code, max_uses) values ('DEV-LOCAL', 5);` (Studio: http://127.0.0.1:54323)
 - Per aprire la registrazione: `update app_config set value = 'open' where key = 'signup_mode';`
+
+## Inviti
+
+La registrazione è su codice. Per crearne uno (serve il file `.env.local` con la chiave di servizio, quindi solo sul tuo PC):
+
+```bash
+pnpm invite 3 14     # codice valido per 3 persone, scade tra 14 giorni (entrambi opzionali)
+```
+
+Per aprire o chiudere la registrazione: `update app_config set value = 'open' where key = 'signup_mode';` (`'invite'` per richiedere il codice).
+
+## Funzioni per gli utenti (M3)
+
+- **Onboarding** al primo accesso (saltabile): nome, primo asset. Le categorie di spesa sono già pronte.
+- **Impostazioni**: categorie modificabili (rinominare aggiorna anche i movimenti), export JSON completo e CSV, import CSV con anteprima e mappa colonne, ripristino da JSON (solo su account vuoto, per non duplicare), cancellazione account con conferma scritta (elimina profilo e tutte le righe collegate).
+- **Demo** `/demo`: dashboard in sola lettura con dati inventati, senza account. **Come funziona** `/come-funziona`: due schermate.
+- **PWA**: installabile (manifest e icone). Il service worker non mette nulla in cache: i dati finanziari arrivano sempre dal server.
+
+## Deploy (Vercel + Supabase cloud)
+
+1. Crea il progetto Supabase (vedi "Backend vero") e applica le migrazioni: `pnpm exec supabase link --project-ref <ref>` poi `pnpm exec supabase db push`.
+2. In Supabase, Authentication, URL Configuration: imposta Site URL e aggiungi `https://<tuo-dominio>/auth/callback` ai Redirect URLs. Il mittente delle email è quello predefinito di Supabase (per un dominio proprio serve un SMTP personalizzato).
+3. Importa il repo su Vercel e imposta le variabili di `.env.example` (chiavi di produzione, **non** quelle locali; usa chiavi di test per le preview). Imposta `SITE_URL` e un `CRON_SECRET` lungo.
+4. `vercel.json` schedula il job prezzi una volta al giorno (il piano Hobby ammette un cron al giorno).
+5. Crea il primo codice invito con `pnpm invite` puntando `.env.local` al progetto cloud.
+6. Prima di invitare gli amici: leggi i termini d'uso dei provider di prezzi (sezione sopra).
+
+**Backup:** ogni utente può scaricare il proprio JSON da Impostazioni. Per un backup del database intero usa quelli di Supabase (giornalieri sul piano a pagamento) o `supabase db dump`.
 
 ## Test
 
@@ -83,5 +109,15 @@ Nome **MyFinance**, registrazione su codice invito (configurabile), repo privato
 Il piano gratuito Supabase ha un limite di progetti attivi: se è esaurito, libera o metti in pausa un vecchio progetto, oppure usa un altro Postgres (Neon, ecc.) e sostituisci Auth. Le migrazioni sono SQL standard; solo `auth.users`, `auth.uid()` e il trigger di registrazione dipendono da Supabase.
 
 ## Sicurezza
+
+Audit prima del rilascio (checklist vibe-security + revisione manuale). Corretti nel codice:
+- funzioni `SECURITY DEFINER` interne non chiamabili da `anon`/`authenticated` (test automatico);
+- rate limit su login (per IP e per indirizzo), ricerca strumenti, collegamento, import e ripristino, su tabella DB riservata al server (`rate_limits`, funzione `hit_rate_limit`); il limiter fallisce "aperto" se il DB non risponde, i limiti dei provider restano;
+- header di sicurezza (anti-framing, nosniff, HSTS, referrer, permissions) e CSP parziale; il link di accesso usa `SITE_URL` e non gli header della richiesta;
+- il budget condiviso dei provider è protetto da quote per utente.
+
+Limiti noti e accettati: la CSP non ha `script-src` stretto (servono nonce per richiesta); con un codice invito sbagliato un indirizzo sconosciuto si distingue da uno noto (app su invito, con rate limit); il rate limit usa l'IP inoltrato dall'hosting, quindi dietro un proxy diverso da Vercel va verificato.
+
+Il resto:
 
 RLS su ogni tabella utente; chiave di servizio solo lato server (`src/lib/supabase/admin.ts`); la FK composita `(asset_id, user_id)` impedisce di collegare un movimento all'asset di un altro utente; export CSV protetto da formula injection. Nessun tracker o analytics.

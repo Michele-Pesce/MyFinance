@@ -8,6 +8,7 @@ const TABS: { href: string; label: MessageKey }[] = [
   { href: "/", label: "nav.overview" },
   { href: "/portfolio", label: "nav.portfolio" },
   { href: "/transactions", label: "nav.transactions" },
+  { href: "/settings", label: "nav.settings" },
 ];
 
 export function Nav() {

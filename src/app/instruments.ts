@@ -8,6 +8,7 @@ import { searchEodhd } from "@/lib/prices/eodhd";
 import { supabaseStore } from "@/lib/prices/server";
 import type { Candidate } from "@/lib/prices/types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { allow } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "./actions";
 
@@ -29,14 +30,16 @@ async function authed() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("unauthenticated");
-  return supabase;
+  return { supabase, userId: data.user.id };
 }
 
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
 /** mode "crypto" -> CoinGecko, otherwise EODHD (ISIN, ticker or name). */
 export async function searchInstruments(query: string, mode: "crypto" | "market"): Promise<SearchResult> {
-  await authed();
+  const { userId } = await authed();
+  // One user must not be able to eat the shared free-plan budget: stock/ETF searches cost a provider call each.
+  if (!(await allow(["search", mode, userId], mode === "market" ? 8 : 40, mode === "market" ? 86_400 : 3_600))) return { ok: false, error: "error.rateLimit" };
   const q = z.string().trim().min(2).max(60).safeParse(query);
   if (!q.success) return { ok: false, error: "error.invalid" };
   if (!process.env.INSTRUMENT_SIGNING_SECRET) return { ok: false, error: "error.notConfigured" };
@@ -66,7 +69,8 @@ const candidateSchema = z.object({
 });
 
 export async function linkInstrument(assetId: string, signed: SignedCandidate): Promise<ActionResult> {
-  const supabase = await authed();
+  const { supabase, userId } = await authed();
+  if (!(await allow(["link", userId], 30, 3_600))) return { ok: false, error: "error.rateLimit" };
   const id = z.string().uuid().safeParse(assetId);
   const parsed = candidateSchema.safeParse(signed.c);
   if (!id.success || !parsed.success) return { ok: false, error: "error.invalid" };
@@ -97,7 +101,7 @@ export async function linkInstrument(assetId: string, signed: SignedCandidate): 
 }
 
 export async function unlinkInstrument(assetId: string): Promise<ActionResult> {
-  const supabase = await authed();
+  const { supabase } = await authed();
   const { error } = await supabase.from("assets").update({ instrument_id: null }).eq("id", z.string().uuid().parse(assetId));
   if (error) return { ok: false, error: "error.save" };
   revalidatePath("/", "layout");
