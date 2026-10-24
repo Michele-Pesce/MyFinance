@@ -38,6 +38,7 @@ export const it = {
   "error.notFound": "Elemento non trovato.",
   "error.email": "Inserisci un indirizzo email valido.",
   "error.invite": "Codice invito non valido o scaduto.",
+  "error.emailSend": "Invio dell'email non riuscito: riprova tra poco. Se continua, il servizio email potrebbe aver raggiunto il suo limite.",
   "error.rateLimit": "Troppi tentativi: riprova tra qualche minuto.",
 
   "class.liquidity": "Liquidità",

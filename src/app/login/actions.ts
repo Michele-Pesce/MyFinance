@@ -27,6 +27,10 @@ export async function requestLink(_: LoginState, formData: FormData): Promise<Lo
   });
   // The trigger's rejection surfaces as a generic signup error. Known limit: a wrong invite code on an unknown address
   // is distinguishable from a known one; accepted for an invite-only app, and rate limited above.
-  if (error) return { error: error.status === 429 ? "error.rateLimit" : "error.invite" };
+  if (error) {
+    if (error.status === 429) return { error: "error.rateLimit" };
+    // The invite trigger fails the signup with this generic message; any other failure (e.g. the email provider) is not the code's fault.
+    return { error: /database error saving new user/i.test(error.message) ? "error.invite" : "error.emailSend" };
+  }
   return { sent: true };
 }
