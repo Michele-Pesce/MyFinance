@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { backupSchema, backupToRows } from "@/lib/backup";
-import type { ImportRow } from "@/lib/import";
+import type { AssetImportRow, ImportRow } from "@/lib/import";
 import { allow } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -88,6 +88,37 @@ export async function importTransactions(rows: ImportRow[]): Promise<CountResult
   }
   refresh();
   return { ok: true, count: out.length };
+}
+
+const assetRowSchema = z.object({
+  name: z.string().trim().min(1).max(100), class: z.enum(ASSET_CLASSES), platform: z.string().max(200).nullable(), color: z.string().max(20).nullable(), groupLabel: z.string().max(200).nullable(),
+  monthlyContribution: z.number().min(0).finite(), initialInvested: z.number().finite(), initialUnits: z.number().finite(), manualPrice: z.number().finite().nullable(),
+  manualValue: z.number().finite(), manualValueAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), archived: z.boolean(),
+});
+
+/** Assets CSV (same format as the export). Names already in the account are skipped, so re-importing never duplicates. Returns the number created. */
+export async function importAssets(rows: AssetImportRow[]): Promise<CountResult> {
+  const { supabase, userId } = await authed();
+  if (!(await allow(["import", userId], 10, 3_600))) return failed("error.rateLimit");
+  const parsed = z.array(assetRowSchema).min(1).max(500).safeParse(rows);
+  if (!parsed.success) return failed("error.invalid");
+  const { data: existing } = await supabase.from("assets").select("name");
+  const seen = new Set((existing ?? []).map((a) => a.name.trim().toLowerCase()));
+  const fresh = parsed.data.filter((r) => {
+    const k = r.name.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  if (fresh.length) {
+    const { error } = await supabase.from("assets").insert(fresh.map((r) => ({
+      user_id: userId, name: r.name, class: r.class, platform: r.platform, color: r.color, group_label: r.groupLabel, monthly_contribution: r.monthlyContribution,
+      initial_invested: r.initialInvested, initial_units: r.initialUnits, manual_price: r.manualPrice, manual_value: r.manualValue, manual_value_at: r.manualValueAt, archived: r.archived,
+    })));
+    if (error) return failed("error.save");
+  }
+  refresh();
+  return { ok: true, count: fresh.length };
 }
 
 /** Restore a JSON backup into an EMPTY account (re-importing into a filled one would duplicate everything). */

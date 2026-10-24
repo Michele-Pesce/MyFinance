@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toCsv } from "./csv";
-import { buildRows, guessMapping, normalizeDate, normalizeType, parseCsv } from "./import";
+import { ASSET_CSV_HEADER, TX_CSV_HEADER, buildRows, detectKind, guessMapping, isExactTxHeader, normalizeDate, normalizeType, parseAssetsCsv, parseCsv } from "./import";
 
 describe("parseCsv", () => {
   it("detects ';', handles quotes, BOM and CRLF", () => {
@@ -42,5 +42,38 @@ describe("buildRows", () => {
   it("unknown type is an error", () => {
     const m = guessMapping(["date", "type", "amount"]);
     expect(buildRows([["2026-01-01", "boh", "5"]], m).errors).toEqual([{ line: 2, reason: "type" }]);
+  });
+});
+
+describe("assets CSV round trip (same format as the export)", () => {
+  const exportCsv = toCsv([...ASSET_CSV_HEADER], [
+    ["ETF A", "etf", "Broker", "blue", "", 100, 500.5, 5, 120.25, 0, "2026-01-05", "false"],
+    ["Conto", "liquidity", null, "green", null, 0, 0, 0, null, 1234.56, null, "true"],
+  ]);
+  it("detects the kind", () => {
+    expect(detectKind(parseCsv(exportCsv)[0])).toBe("assets");
+    expect(detectKind(["Data", "Importo"])).toBe("transactions");
+  });
+  it("reads back every field", () => {
+    const { valid, errors } = parseAssetsCsv(parseCsv(exportCsv));
+    expect(errors).toEqual([]);
+    expect(valid[0]).toMatchObject({ name: "ETF A", class: "etf", monthlyContribution: 100, initialInvested: 500.5, initialUnits: 5, manualPrice: 120.25, manualValueAt: "2026-01-05", archived: false });
+    expect(valid[1]).toMatchObject({ name: "Conto", manualPrice: null, manualValue: 1234.56, manualValueAt: null, archived: true, platform: null });
+  });
+  it("flags bad rows", () => {
+    const rows = parseCsv(toCsv([...ASSET_CSV_HEADER], [["", "etf", "", "", "", 0, 0, 0, "", 0, "", ""], ["X", "nope", "", "", "", 0, 0, 0, "", 0, "", ""], ["Y", "etf", "", "", "", "abc", 0, 0, "", 0, "", ""], ["Z", "etf", "", "", "", 0, 0, 0, "", 0, "31/02/2026", ""]]));
+    expect(parseAssetsCsv(rows).errors.map((e) => e.reason)).toEqual(["name", "class", "number", "date"]);
+  });
+});
+
+describe("transactions CSV round trip (same format as the export)", () => {
+  it("our export header is recognised and rows come back identical", () => {
+    const csv = toCsv([...TX_CSV_HEADER], [["2026-02-03", "pac", "", "PAC", 100, "ETF A", 0.8299], ["2026-02-04", "expense", "Cibo fuori", "pranzo", 12.5, "", null]]);
+    const t = parseCsv(csv);
+    expect(isExactTxHeader(t[0])).toBe(true);
+    const { valid, errors } = buildRows(t.slice(1), guessMapping(t[0]));
+    expect(errors).toEqual([]);
+    expect(valid[0]).toMatchObject({ date: "2026-02-03", type: "pac", amount: 100, assetName: "ETF A", units: 0.8299 });
+    expect(valid[1]).toMatchObject({ type: "expense", category: "Cibo fuori", description: "pranzo", amount: 12.5, assetName: null });
   });
 });

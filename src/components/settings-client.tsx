@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addCategory, deleteAccount, deleteCategory, importTransactions, renameCategory, restoreBackup, type CountResult } from "@/app/account-actions";
+import { addCategory, deleteAccount, deleteCategory, importAssets, importTransactions, renameCategory, restoreBackup, type CountResult } from "@/app/account-actions";
 import type { ActionResult } from "@/app/actions";
 import { ActionButton } from "@/components/client-bits";
 import type { Category } from "@/lib/data";
 import { formatDate, formatMoney } from "@/lib/format";
-import { buildRows, guessMapping, parseCsv, type Mapping } from "@/lib/import";
+import { buildRows, detectKind, guessMapping, isExactTxHeader, parseAssetsCsv, parseCsv, type Mapping } from "@/lib/import";
 import { t, type MessageKey } from "@/lib/i18n";
 
 const useMsg = () => {
@@ -81,14 +81,32 @@ export function CsvImport() {
     if (rows.length < 2) return m.set({ key: "error.invalid" });
     setTable(rows); setMap(guessMapping(rows[0])); m.set(null);
   };
-  const built = table && map && map.date >= 0 && map.amount >= 0 ? buildRows(table.slice(1), map) : null;
+  const kind = table ? detectKind(table[0]) : null;
+  const built = kind === "transactions" && table && map && map.date >= 0 && map.amount >= 0 ? buildRows(table.slice(1), map) : null;
+  const builtAssets = kind === "assets" && table ? parseAssetsCsv(table) : null;
 
   return (
     <div>
       <label className="f">{t("settings.csvFile")}<input type="file" accept=".csv,text/csv,text/plain" onChange={(e) => onFile(e.target.files?.[0])} /></label>
-      {table && map && (
+      {builtAssets && (
         <>
-          <p className="note">{t("settings.csvMap")}</p>
+          <p className="note"><b>{t("settings.csvAssetsFound", { ok: builtAssets.valid.length, bad: builtAssets.errors.length })}</b>
+            {builtAssets.errors.length > 0 && <> · {t("settings.csvErrors", { lines: builtAssets.errors.slice(0, 8).map((e) => `${e.line} (${t(`settings.csvErr.${e.reason}` as MessageKey)})`).join(", ") })}</>}</p>
+          <div className="scroll-x"><table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+            <tbody>{builtAssets.valid.slice(0, 8).map((r, i) => (
+              <tr key={i} style={{ borderTop: "1px solid var(--line)" }}>
+                <td>{r.name}</td><td>{t(`class.${r.class}` as MessageKey)}</td><td className="num" style={{ textAlign: "right" }}>{formatMoney(r.manualValue)}</td>
+              </tr>))}</tbody></table></div>
+          <div className="actions">
+            <button type="button" className="btn primary" disabled={pending || !builtAssets.valid.length}
+              onClick={() => start(async () => { const r = await importAssets(builtAssets.valid); m.show(r, "settings.imported"); if (r.ok) { setTable(null); setMap(null); } })}>
+              {t("settings.importAssetsDo", { n: builtAssets.valid.length })}</button>
+          </div>
+        </>
+      )}
+      {kind === "transactions" && table && map && (
+        <>
+          <p className="note">{isExactTxHeader(table[0]) ? t("settings.csvExact") : t("settings.csvMap")}</p>
           <div className="form">
             {FIELDS.map((f) => (
               <label className="f" key={f.key}>{t(f.label)}{f.required ? " *" : ""}

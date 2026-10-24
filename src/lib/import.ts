@@ -1,6 +1,6 @@
 // Pure parsing for the CSV import (preview + column mapping). No I/O.
 import { parseDecimal } from "./format";
-import type { TxType } from "./types";
+import { ASSET_CLASSES, type AssetClass, type TxType } from "./types";
 
 /** Minimal RFC-4180 reader: quotes, "" escapes, CRLF, BOM. The delimiter (; , or tab) is detected on the first line. */
 export function parseCsv(text: string): string[][] {
@@ -87,4 +87,59 @@ export function guessMapping(header: string[]): Mapping {
     date: find("date", "data"), amount: find("amount", "importo"), type: find("type", "tipo"), category: find("category", "categoria"),
     description: find("description", "descrizione"), asset: find("asset"), units: find("units", "quote"),
   };
+}
+
+/* ------------------------- assets CSV (same format as the export) ------------------------- */
+
+export const ASSET_CSV_HEADER = [
+  "name", "class", "platform", "color", "group", "monthly_contribution", "initial_invested", "initial_units", "manual_price", "manual_value", "manual_value_at", "archived",
+] as const;
+export const TX_CSV_HEADER = ["date", "type", "category", "description", "amount", "asset", "units"] as const;
+
+export type CsvKind = "assets" | "transactions";
+
+/** Which of our two export formats a header looks like. Anything else is a bank-style file and goes through column mapping. */
+export function detectKind(header: string[]): CsvKind {
+  const h = header.map((x) => x.trim().toLowerCase());
+  return h.includes("class") && h.includes("name") && h.includes("manual_value") ? "assets" : "transactions";
+}
+
+export const isExactTxHeader = (header: string[]) => TX_CSV_HEADER.every((c, i) => header[i]?.trim().toLowerCase() === c);
+
+export interface AssetImportRow {
+  name: string; class: AssetClass; platform: string | null; color: string | null; groupLabel: string | null;
+  monthlyContribution: number; initialInvested: number; initialUnits: number; manualPrice: number | null; manualValue: number;
+  manualValueAt: string | null; archived: boolean;
+}
+export interface AssetImportError { line: number; reason: "name" | "class" | "number" | "date" }
+
+export function parseAssetsCsv(rows: string[][]): { valid: AssetImportRow[]; errors: AssetImportError[] } {
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const col = (r: string[], name: string) => (r[header.indexOf(name)] ?? "").trim();
+  const valid: AssetImportRow[] = [];
+  const errors: AssetImportError[] = [];
+  rows.slice(1).forEach((r, idx) => {
+    const line = idx + 2;
+    const name = col(r, "name");
+    if (!name) return errors.push({ line, reason: "name" });
+    const cls = col(r, "class").toLowerCase() as AssetClass;
+    if (!(ASSET_CLASSES as readonly string[]).includes(cls)) return errors.push({ line, reason: "class" });
+    const num = (field: string): number | null | "bad" => {
+      const raw = col(r, field);
+      if (!raw) return null;
+      const n = parseDecimal(raw);
+      return n === null ? "bad" : n;
+    };
+    const [mc, ii, iu, mp, mv] = ["monthly_contribution", "initial_invested", "initial_units", "manual_price", "manual_value"].map(num);
+    if ([mc, ii, iu, mp, mv].includes("bad") || (mc as number | null) !== null && (mc as number) < 0) return errors.push({ line, reason: "number" });
+    const rawAt = col(r, "manual_value_at");
+    const at = rawAt ? normalizeDate(rawAt) : null;
+    if (rawAt && !at) return errors.push({ line, reason: "date" });
+    valid.push({
+      name, class: cls, platform: col(r, "platform") || null, color: col(r, "color") || null, groupLabel: col(r, "group") || null,
+      monthlyContribution: (mc as number | null) ?? 0, initialInvested: (ii as number | null) ?? 0, initialUnits: (iu as number | null) ?? 0,
+      manualPrice: (mp as number | null) ?? null, manualValue: (mv as number | null) ?? 0, manualValueAt: at, archived: ["true", "1", "si", "sì"].includes(col(r, "archived").toLowerCase()),
+    });
+  });
+  return { valid, errors };
 }

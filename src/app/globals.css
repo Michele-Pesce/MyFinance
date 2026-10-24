@@ -30,8 +30,9 @@ h2 { font-size: 13px; margin: 0; font-weight: 600; letter-spacing: .06em; text-t
 h3 { font-size: 15px; margin: 0; font-weight: 600; }
 .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .top { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; }
-.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
-.tabs a { font-weight: 500; color: var(--muted); padding: 8px 14px; border-radius: 7px; text-decoration: none; }
+.top > div { min-width: 0; max-width: 100%; }
+.tabs { display: flex; overflow-x: auto; max-width: 100%; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.tabs a { white-space: nowrap; font-weight: 500; color: var(--muted); padding: 8px 14px; border-radius: 7px; text-decoration: none; }
 .tabs a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .view { display: flex; flex-direction: column; gap: 16px; min-width: 0; }

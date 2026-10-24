@@ -19,6 +19,7 @@ export default async function SettingsPage() {
         <div className="card-head"><h2>{t("settings.export")}</h2></div>
         <div className="actions" style={{ marginTop: 0 }}>
           <a className="btn" href="/api/export/json" download>{t("settings.exportJson")}</a>
+          <a className="btn" href="/api/export/assets" download>{t("settings.exportAssetsCsv")}</a>
           <a className="btn" href="/api/export/transactions" download>{t("portfolio.exportCsv")}</a>
         </div>
         <p className="note">{t("settings.exportNote")}</p>
@@ -26,6 +27,7 @@ export default async function SettingsPage() {
 
       <section className="card">
         <div className="card-head"><h2>{t("settings.importCsv")}</h2></div>
+        <p className="note" style={{ marginTop: 0 }}>{t("settings.passPortfolio")}</p>
         <CsvImport />
       </section>
 
