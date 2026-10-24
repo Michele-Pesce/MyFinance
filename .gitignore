@@ -43,3 +43,6 @@ next-env.d.ts
 # env + local tooling
 .env*.local
 supabase/.temp
+
+# keep the documented template
+!.env.example
