@@ -95,7 +95,7 @@ Prova a mano in locale: `curl -H "Authorization: Bearer $CRON_SECRET" http://loc
 - `src/app/instruments.ts` ricerca e collegamento strumenti (firmati).
 - `src/proxy.ts` rinfresca la sessione e rimanda al login.
 
-## Scelte prese senza risposta di Michele (handoff §14)
+## Scelte prese senza risposta del committente (handoff §14)
 
 Nome **MyFinance**, registrazione su codice invito (configurabile), repo privato, solo italiano, solo EUR (il modello dati ha già `currency`), mittente email predefinito del servizio.
 
