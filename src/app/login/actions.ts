@@ -15,7 +15,7 @@ export async function requestLink(_: LoginState, formData: FormData): Promise<Lo
 
   // Per IP (bulk probing) and per address (email bombing / invite-code guessing).
   const ip = await clientIp();
-  if (!(await allow(["login-ip", ip], 10, 600)) || !(await allow(["login-email", email.data.toLowerCase()], 3, 600))) return { error: "error.rateLimit" };
+  if (!(await allow(["login-ip", ip], 10, 600)) || !(await allow(["login-email", email.data.toLowerCase()], 10, 600))) return { error: "error.rateLimit" };
 
   // Prefer the configured public URL: the Host/Origin headers are client-controlled.
   const h = await headers();
