@@ -23,10 +23,14 @@ pnpm exec supabase status    # copia URL e chiavi in .env.local (vedi .env.examp
 pnpm dev                     # http://localhost:3000
 ```
 
-- Le email di accesso (link magico) arrivano in Mailpit: http://127.0.0.1:54324
+- Le email con il codice di accesso a 6 cifre arrivano in Mailpit: http://127.0.0.1:54324
 - La registrazione è **solo su invito**. Crea un codice in locale:
   `insert into invite_codes (code, max_uses) values ('DEV-LOCAL', 5);` (Studio: http://127.0.0.1:54323)
 - Per aprire la registrazione: `update app_config set value = 'open' where key = 'signup_mode';`
+
+## Accesso
+
+Un account per ogni email. Si inserisce l'email, arriva un **codice di 6 cifre** (valido 10 minuti) e lo si digita nella stessa pagina: niente link da aprire, quindi funziona anche nell'app installata su iPhone. Solo la prima volta serve anche il codice invito. Il testo dell'email è `supabase/templates/code.html`; durata, lunghezza e modello sono in `supabase/config.toml` e per il progetto cloud si applicano con `pnpm exec supabase config push` (rispondi "No" alla parte storage: richiede un piano a pagamento ed è inutile qui). Tentativi limitati: 5 verifiche per email e 20 per IP ogni 10 minuti.
 
 ## Inviti
 

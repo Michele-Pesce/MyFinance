@@ -12,10 +12,8 @@ export const it = {
 
   "login.email": "Email",
   "login.inviteCode": "Codice invito",
-  "login.inviteHint": "Il codice serve solo la prima volta. Se hai già un account, lascia vuoto: ti arriva un link di accesso via email.",
-  "login.send": "Invia link di accesso",
-  "login.sentTitle": "Controlla la posta",
-  "login.sentBody": "Se l'indirizzo è valido, ti abbiamo inviato un link per accedere. Aprilo da questo dispositivo.",
+  "login.inviteHint": "Il codice invito serve solo la prima volta. Se hai già un account, lascia vuoto: ti mandiamo un codice di 6 cifre via email.",
+  "login.send": "Invia il codice",
 
   "common.save": "Salva",
   "common.saveChange": "Salva modifica",
@@ -263,4 +261,11 @@ export const it = {
   "fire.yearsShort": "{n} anni",
   "fire.sensitivityNote": "Anni per raggiungere il numero FIRE con gli stessi versamenti. Un trattino significa più di 100 anni.",
   "fire.disclaimer": "Simulazione a rendimento costante, in euro di oggi, senza tasse né commissioni. Non è consulenza finanziaria e non indica cosa comprare o vendere: serve a confrontare scenari.",
+  "login.codeSent": "Abbiamo inviato un codice di 6 cifre a {email}. Controlla anche lo spam.",
+  "login.code": "Codice di 6 cifre",
+  "login.enter": "Accedi",
+  "login.changeEmail": "Cambia email",
+  "login.resendIn": "Puoi chiedere un nuovo codice tra {s} secondi.",
+  "login.resendHint": "Non è arrivato? Torna indietro con \"Cambia email\" e richiedilo di nuovo.",
+  "error.codeInvalid": "Codice non valido o scaduto. Il codice vale 10 minuti.",
 } as const;

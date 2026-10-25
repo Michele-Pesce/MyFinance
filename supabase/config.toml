@@ -232,7 +232,7 @@ max_frequency = "1s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+otp_expiry = 600
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]
@@ -243,6 +243,15 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Login by 6-digit code: both the sign-in and the first-signup email show {{ .Token }} instead of a link.
+[auth.email.template.magic_link]
+subject = "Il tuo codice di accesso a MyFinance"
+content_path = "./supabase/templates/code.html"
+
+[auth.email.template.confirmation]
+subject = "Il tuo codice di accesso a MyFinance"
+content_path = "./supabase/templates/code.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -426,7 +435,7 @@ additional_redirect_urls = ["https://myfinance-wine-seven.vercel.app/auth/callba
 [remotes.production.auth.email]
 enable_confirmations = true
 max_frequency = "1m0s"
-otp_length = 8
+otp_length = 6
 
 [remotes.production.auth.mfa.totp]
 enroll_enabled = true
