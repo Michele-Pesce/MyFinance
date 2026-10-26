@@ -32,6 +32,24 @@ export interface AppData {
   instruments: Record<string, { name: string; symbol: string | null; provider: string }>; // linked instruments, by id
 }
 
+// PostgREST silently cuts every response at `max_rows` (1000 here and on the Supabase cloud default), so a plain
+// `.limit(5000)` returns 1000 rows without any error and the oldest transactions drop out of every total.
+// Reading in pages of this size never hits the cap; it must stay <= `max_rows` in supabase/config.toml.
+export const PAGE_SIZE = 1000;
+
+/** Reads every row of a query, one page at a time. `build` must order by a unique key so pages never overlap. */
+export async function fetchAll<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build(from, from + PAGE_SIZE - 1);
+    if (error) return { data: rows, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return { data: rows, error: null };
+  }
+}
+
 /**
  * Reads everything the pages need. With the user's own client RLS already scopes the rows; the optional `userId`
  * is for the service-role client (daily snapshot job), which bypasses RLS and must filter explicitly.
@@ -42,10 +60,12 @@ export async function loadData(supabase: SupabaseClient, userId?: string): Promi
   let qs = supabase.from("snapshots").select("*");
   let qc = supabase.from("categories").select("id, kind, name, sort");
   if (userId) { qa = qa.eq("user_id", userId); qt = qt.eq("user_id", userId); qs = qs.eq("user_id", userId); qc = qc.eq("user_id", userId); }
+  // The two tables that grow every day are read in pages; assets and categories stay far below one page.
+  // `id` is the tie-break: several transactions share a date, and pages need a total order.
   const [assets, txs, snaps, cats] = await Promise.all([
     qa.order("created_at"),
-    qt.order("date", { ascending: false }).limit(5000),
-    qs.order("date"),
+    fetchAll((from, to) => qt.order("date", { ascending: false }).order("id").range(from, to)),
+    fetchAll((from, to) => qs.order("date").order("id").range(from, to)),
     qc.order("sort"),
   ]);
   for (const r of [assets, txs, snaps, cats]) if (r.error) throw new Error(r.error.message);
