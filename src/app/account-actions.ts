@@ -76,12 +76,15 @@ export async function importTransactions(rows: ImportRow[]): Promise<CountResult
   if (!(await allow(["import", userId], 10, 3_600))) return failed("error.rateLimit");
   const parsed = z.array(importRowSchema).min(1).max(5000).safeParse(rows);
   if (!parsed.success) return failed("error.invalid");
-  const { data: assets } = await supabase.from("assets").select("id, name");
-  const byName = new Map((assets ?? []).map((a) => [a.name.trim().toLowerCase(), a.id as string]));
-  const out = parsed.data.map((r) => ({
-    user_id: userId, date: r.date, type: r.type, category: r.category, description: r.description, amount: r.amount,
-    asset_id: r.assetName ? byName.get(r.assetName.toLowerCase()) ?? null : null, units: r.assetName ? r.units : null,
-  }));
+  const { data: assets } = await supabase.from("assets").select("id, name, class");
+  const byName = new Map((assets ?? []).map((a) => [a.name.trim().toLowerCase(), a] as const));
+  const out = parsed.data.map((r) => {
+    const a = r.assetName ? byName.get(r.assetName.toLowerCase()) : undefined;
+    const invest = r.type === "pac" || r.type === "lump_sum";
+    // Income/expense can only be booked on a liquidity account; anything else is imported unlinked instead of failing the batch.
+    const asset = a && (invest || a.class === "liquidity") ? (a.id as string) : null;
+    return { user_id: userId, date: r.date, type: r.type, category: r.category, description: r.description, amount: r.amount, asset_id: asset, units: asset && invest ? r.units : null };
+  });
   for (let i = 0; i < out.length; i += 500) {
     const { error } = await supabase.from("transactions").insert(out.slice(i, i + 500));
     if (error) return failed("error.save");

@@ -37,7 +37,7 @@ describe("buildRows", () => {
     const m = guessMapping(["date", "type", "amount", "asset", "units"]);
     const { valid } = buildRows([["2026-01-01", "pac", "100", "ETF A", "2,5"], ["2026-01-01", "expense", "5", "ETF A", ""]], m);
     expect(valid[0]).toMatchObject({ type: "pac", assetName: "ETF A", units: 2.5 });
-    expect(valid[1].assetName).toBeNull();
+    expect(valid[1].assetName).toBe("ETF A"); // expense keeps the name: it is the liquidity account to debit
   });
   it("unknown type is an error", () => {
     const m = guessMapping(["date", "type", "amount"]);

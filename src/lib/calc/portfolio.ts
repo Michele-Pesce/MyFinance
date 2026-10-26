@@ -3,8 +3,13 @@ import type { Asset, AssetClass, PriceMap, Transaction } from "../types";
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
-/** PAC and lump-sum are the only transactions that touch an asset; income/expense never do. */
 const isInvestment = (t: Transaction) => t.type === "pac" || t.type === "lump_sum";
+
+/**
+ * Effect of a transaction on the value of the asset it is linked to: PAC / lump sum add to it, and so does income.
+ * An expense takes money out of the (liquidity) account it was paid from. Transactions with no linked asset change nothing.
+ */
+const signedAmount = (t: Transaction) => (t.type === "expense" ? -t.amount : t.amount);
 
 /** Display order of the classes in the portfolio view. */
 export const CLASS_ORDER: AssetClass[] = ["liquidity", "etf", "bond", "stock", "crypto", "other", "receivable"];
@@ -53,9 +58,10 @@ export function computeAsset(asset: Asset, txs: Transaction[], prices: PriceMap 
   if (price !== null) {
     value = units * price;
   } else {
-    // Manual value plus contributions made after it was last set (all of them when never set).
-    const after = mv.filter((t) => !asset.manualValueAt || t.date > asset.manualValueAt);
-    value = asset.manualValue + sum(after.map((t) => t.amount));
+    // Manual value plus everything linked to the asset after it was last set (all of it when never set):
+    // contributions, and for a liquidity account the income and expenses booked on it.
+    const after = txs.filter((t) => t.assetId === asset.id && (!asset.manualValueAt || t.date > asset.manualValueAt));
+    value = asset.manualValue + sum(after.map(signedAmount));
   }
 
   const hasCost = invested > 0;

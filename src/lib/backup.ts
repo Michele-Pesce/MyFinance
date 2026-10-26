@@ -58,7 +58,7 @@ export function backupToRows(b: Backup, userId: string, newId: () => string) {
       const invest = t.type === "pac" || t.type === "lump_sum";
       return {
         user_id: userId, date: t.date, type: t.type, category: t.category ?? null, description: t.description ?? null, amount: t.amount,
-        asset_id: invest && t.assetId ? idMap.get(t.assetId) ?? null : null, units: invest ? t.units ?? null : null, units_estimated: t.unitsEstimated ?? false,
+        asset_id: t.assetId ? idMap.get(t.assetId) ?? null : null, units: invest ? t.units ?? null : null, units_estimated: t.unitsEstimated ?? false,
       };
     }),
     snapshots: b.snapshots.map((s) => ({ user_id: userId, date: s.date, net_worth: s.netWorth, liquidity: s.liquidity, invested: s.invested, crypto: s.crypto, receivables: s.receivables, source: s.source })),

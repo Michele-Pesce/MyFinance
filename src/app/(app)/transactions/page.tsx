@@ -26,11 +26,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const sum = (ty: string) => list.filter((x) => x.type === ty).reduce((a, x) => a + x.amount, 0);
   const assetName = (id?: string | null) => data.assets.find((a) => a.id === id)?.name;
   const investable = data.assets.filter((a) => a.class !== "liquidity" && a.class !== "receivable" && !a.archived);
+  const accounts = data.assets.filter((a) => a.class === "liquidity" && !a.archived);
   const editing = data.transactions.find((x) => x.id === sp.edit);
 
   return (
     <div className="view">
-      <TransactionForm categories={data.categories} assets={investable} editing={editing} />
+      <TransactionForm key={editing?.id ?? "new"} categories={data.categories} assets={investable} accounts={accounts} editing={editing} />
 
       <section className="card">
         <div className="card-head">

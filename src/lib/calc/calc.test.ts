@@ -44,10 +44,31 @@ describe("asset value", () => {
     expect(r.gainPct).toBeNull();
   });
 
-  it("income and expense never change asset values", () => {
+  it("income and expense with no account change nothing", () => {
     const a = asset({ id: "a", class: "liquidity", manualValue: 100 });
-    const txs = [tx({ id: "1", type: "income", amount: 500, assetId: "a" }), tx({ id: "2", type: "expense", amount: 20, assetId: "a" })];
-    expect(computeAsset(a, txs).value).toBe(100);
+    expect(computeAsset(a, [tx({ id: "1", type: "income", amount: 500 }), tx({ id: "2", type: "expense", amount: 20 })]).value).toBe(100);
+  });
+
+  it("expenses and income booked on a liquidity account move its balance", () => {
+    const a = asset({ id: "card", class: "liquidity", manualValue: 100 });
+    const txs = [tx({ id: "1", type: "income", amount: 500, assetId: "card" }), tx({ id: "2", type: "expense", amount: 20, assetId: "card" })];
+    const r = computeAsset(a, txs);
+    expect(r.value).toBe(580);
+    expect(r.invested).toBe(0); // not an investment: cost basis and gain are untouched
+    expect(r.gain).toBeNull();
+  });
+
+  it("only what is dated after the manual balance counts, and each account has its own balance", () => {
+    const cash = asset({ id: "cash", class: "liquidity", manualValue: 50, manualValueAt: "2026-01-10" });
+    const card = asset({ id: "card", class: "liquidity", manualValue: 200 });
+    const txs = [
+      tx({ id: "old", type: "expense", amount: 10, assetId: "cash", date: "2026-01-10" }), // already inside the manual value
+      tx({ id: "new", type: "expense", amount: 5, assetId: "cash", date: "2026-01-11" }),
+      tx({ id: "other", type: "expense", amount: 30, assetId: "card", date: "2026-01-11" }),
+    ];
+    expect(computeAsset(cash, txs).value).toBe(45);
+    expect(computeAsset(card, txs).value).toBe(170);
+    expect(computePortfolio([cash, card], txs).liquidity).toBe(215);
   });
 });
 

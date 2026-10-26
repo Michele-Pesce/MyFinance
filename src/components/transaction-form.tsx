@@ -8,17 +8,31 @@ import { toInput, todayIso } from "@/lib/format";
 import { t, type MessageKey } from "@/lib/i18n";
 import { TX_TYPES, type Asset, type Transaction, type TxType } from "@/lib/types";
 
-export function TransactionForm({ categories, assets, editing }: { categories: Category[]; assets: Pick<Asset, "id" | "name">[]; editing?: Transaction }) {
+const LAST_ACCOUNT = "lastAccount";
+const lastAccount = () => { try { return localStorage.getItem(LAST_ACCOUNT) ?? ""; } catch { return ""; } };
+
+export function TransactionForm({ categories, assets, accounts, editing }: {
+  categories: Category[]; assets: Pick<Asset, "id" | "name">[]; accounts: Pick<Asset, "id" | "name">[]; editing?: Transaction;
+}) {
   const [type, setType] = useState<TxType>(editing?.type ?? "expense");
   const [error, setError] = useState<MessageKey | null>(null);
   const [resetKey, setResetKey] = useState(0);
+  // Account the money moves from/to (cash, card...). New entries start from the one used last time; the choice is still asked each time.
+  const [account, setAccount] = useState(() => {
+    const id = editing ? editing.assetId ?? "" : lastAccount();
+    return accounts.some((a) => a.id === id) ? id : "";
+  });
   const [pending, start] = useTransition();
   const investment = type === "pac" || type === "lump_sum";
   const cats = categories.filter((c) => c.kind === (type === "income" ? "income" : "expense"));
 
   const submit = (fd: FormData) => start(async () => {
     const r = await saveTransaction(fd);
-    if (r.ok) { setError(null); setResetKey((k) => k + 1); } else setError(r.error as MessageKey);
+    if (r.ok) {
+      setError(null);
+      setResetKey((k) => k + 1);
+      if (!investment) try { localStorage.setItem(LAST_ACCOUNT, String(fd.get("assetId") ?? "")); } catch { /* not kept */ }
+    } else setError(r.error as MessageKey);
   });
 
   return (
@@ -39,6 +53,13 @@ export function TransactionForm({ categories, assets, editing }: { categories: C
               {cats.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select></label>
         )}
+        {!investment && (accounts.length ? (
+          <label className="f">{t(type === "income" ? "tx.accountIn" : "tx.accountOut")}
+            <select name="assetId" value={account} onChange={(e) => setAccount(e.target.value)}>
+              <option value="">{t("tx.accountNone")}</option>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select></label>
+        ) : <p className="note full">{t("tx.accountMissing")}</p>)}
         <label className="f">{t("tx.amount")}<input type="text" inputMode="decimal" name="amount" required placeholder="0,00" defaultValue={toInput(editing?.amount)} /></label>
         {investment && (
           <>

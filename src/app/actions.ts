@@ -142,9 +142,10 @@ export async function saveTransaction(formData: FormData): Promise<ActionResult>
     }
   }
 
+  // Income/expense may be booked on a liquidity account (cash, card...) so its balance follows; the DB trigger enforces the class.
   const row = {
     date: v.date, type: v.type, category: v.category, description: v.description, amount: v.amount,
-    asset_id: isInvestment ? v.assetId ?? null : null, units, units_estimated: unitsEstimated,
+    asset_id: v.assetId ?? null, units, units_estimated: unitsEstimated,
   };
   const { error } = v.id
     ? await supabase.from("transactions").update(row).eq("id", v.id)

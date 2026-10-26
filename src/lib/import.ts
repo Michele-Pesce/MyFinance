@@ -74,7 +74,8 @@ export function buildRows(rows: string[][], map: Mapping): { valid: ImportRow[];
     const units = parseDecimal(cell(r, map.units));
     valid.push({
       date, type, amount: Math.abs(amount), category: cell(r, map.category) || null, description: cell(r, map.description) || null,
-      assetName: type === "pac" || type === "lump_sum" ? cell(r, map.asset) || null : null, units: units !== null && units > 0 ? units : null,
+      // investments: the asset; income/expense: the liquidity account the money moved on
+      assetName: cell(r, map.asset) || null, units: units !== null && units > 0 ? units : null,
     });
   });
   return { valid, errors };

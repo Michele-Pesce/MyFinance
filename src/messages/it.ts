@@ -271,4 +271,8 @@ export const it = {
   "error.weakPassword": "La password deve avere tra 8 e 72 caratteri.",
   "error.accountExists": "Esiste già un account con questa email: usa \"Accedi\".",
   "error.signup": "Registrazione non riuscita: riprova tra poco.",
+  "tx.accountOut": "Pagato da",
+  "tx.accountIn": "Accreditato su",
+  "tx.accountNone": "Non aggiornare nessun conto",
+  "tx.accountMissing": "Per aggiornare i saldi crea nel Portafoglio degli asset di liquidità (per esempio Contanti e Carta) e poi scegli da quale pagare.",
 } as const;

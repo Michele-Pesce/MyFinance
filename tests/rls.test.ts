@@ -96,6 +96,15 @@ run("row level security", () => {
     expect((await admin.rpc("hit_rate_limit", { p_key: key + "-other", p_max: 3, p_window_seconds: 60 })).data).toBe(true);
   });
 
+  it("an expense can be booked on a liquidity account but not on an investment asset", async () => {
+    const uid = (await a.auth.getUser()).data.user!.id;
+    const etf = (await a.from("assets").insert({ user_id: uid, name: "ETF", class: "etf" }).select().single()).data!;
+    const ok = await a.from("transactions").insert({ user_id: uid, date: "2026-01-01", type: "expense", amount: 5, asset_id: assetOfA });
+    expect(ok.error).toBeNull();
+    const bad = await a.from("transactions").insert({ user_id: uid, date: "2026-01-01", type: "expense", amount: 5, asset_id: etf.id });
+    expect(bad.error).not.toBeNull();
+  });
+
   it("anon sees nothing", async () => {
     const { data, error } = await anon.from("assets").select("*");
     expect(error !== null || data!.length === 0).toBe(true);
