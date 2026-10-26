@@ -6,48 +6,49 @@ import type { MessageKey } from "@/lib/i18n";
 import { allow, clientIp } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
-// Login = email + 6-digit code. One account per email. The code is emailed, then typed in the same browser/PWA,
-// so there is no link to open in a different context (the problem with magic links on iOS home-screen apps).
-export type LoginState = { codeSent?: boolean; email?: string; error?: MessageKey };
+// Login = email + password chosen by the user. One account per email. Signing up needs an invite code (checked by a DB
+// trigger on auth.users). No email is sent: no link to open in another context (iOS PWA) and no email-provider limits.
+export type LoginState = { error?: MessageKey };
 
-const emailSchema = z.string().trim().toLowerCase().email();
+const email = z.string().trim().toLowerCase().email();
+// bcrypt only reads the first 72 bytes: longer passwords would be silently truncated.
+const password = z.string().min(8).max(72);
 
-/** Step 1: send the code. A new address needs a valid invite code (DB trigger on auth.users); existing users don't. */
-export async function requestCode(_: LoginState, formData: FormData): Promise<LoginState> {
-  const email = emailSchema.safeParse(String(formData.get("email") ?? ""));
-  if (!email.success) return { error: "error.email" };
+/** Create the account and sign in. */
+export async function signUp(_: LoginState, formData: FormData): Promise<LoginState> {
+  const e = email.safeParse(String(formData.get("email") ?? ""));
+  if (!e.success) return { error: "error.email" };
+  const p = password.safeParse(String(formData.get("password") ?? ""));
+  if (!p.success) return { error: "error.weakPassword" };
 
-  // Per IP (bulk probing) and per address (email bombing / invite-code guessing).
   const ip = await clientIp();
-  if (!(await allow(["login-ip", ip], 10, 600)) || !(await allow(["login-email", email.data], 10, 600))) return { email: email.data, error: "error.rateLimit" };
+  if (!(await allow(["signup-ip", ip], 10, 600)) || !(await allow(["signup-email", e.data], 5, 600))) return { error: "error.rateLimit" };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.data,
-    options: { data: { invite_code: String(formData.get("invite") ?? "") } },
-  });
+  const { data, error } = await supabase.auth.signUp({ email: e.data, password: p.data, options: { data: { invite_code: String(formData.get("invite") ?? "") } } });
   if (error) {
-    if (error.status === 429) return { email: email.data, error: "error.rateLimit" };
-    // The invite trigger fails the signup with this generic message; any other failure (e.g. the email provider) is not the code's fault.
-    // Known limit: a wrong invite code tells a new address from a known one; accepted for an invite-only app, rate limited above.
-    return { email: email.data, error: /database error saving new user/i.test(error.message) ? "error.invite" : "error.emailSend" };
+    if (error.status === 429) return { error: "error.rateLimit" };
+    if (/already registered|already exists/i.test(error.message) || error.code === "user_already_exists") return { error: "error.accountExists" };
+    if (error.code === "weak_password") return { error: "error.weakPassword" };
+    // The invite trigger fails the signup with this generic message.
+    return { error: /database error saving new user/i.test(error.message) ? "error.invite" : "error.signup" };
   }
-  return { codeSent: true, email: email.data };
+  // No session means the project still requires email confirmation: not how this app is configured.
+  if (!data.session) return { error: "error.signup" };
+  redirect("/");
 }
 
-/** Step 2: check the code and open the session. Attempts are limited so a 6-digit code cannot be brute-forced. */
-export async function verifyCode(_: LoginState, formData: FormData): Promise<LoginState> {
-  const email = emailSchema.safeParse(String(formData.get("email") ?? ""));
-  const token = String(formData.get("code") ?? "").replace(/\s/g, "");
-  if (!email.success || !/^\d{6}$/.test(token)) return { codeSent: true, email: email.data, error: "error.codeInvalid" };
+/** Sign in. Same message for a wrong password and an unknown email. Attempts limited per email and per IP. */
+export async function signIn(_: LoginState, formData: FormData): Promise<LoginState> {
+  const e = email.safeParse(String(formData.get("email") ?? ""));
+  const pw = String(formData.get("password") ?? "");
+  if (!e.success || !pw) return { error: "error.credentials" };
 
   const ip = await clientIp();
-  if (!(await allow(["verify-email", email.data], 5, 600)) || !(await allow(["verify-ip", ip], 20, 600))) return { codeSent: true, email: email.data, error: "error.rateLimit" };
+  if (!(await allow(["signin-email", e.data], 8, 600)) || !(await allow(["signin-ip", ip], 30, 600))) return { error: "error.rateLimit" };
 
   const supabase = await createClient();
-  // First sign-in of a new address may be a "signup" token; try both before giving up.
-  let { error } = await supabase.auth.verifyOtp({ email: email.data, token, type: "email" });
-  if (error) ({ error } = await supabase.auth.verifyOtp({ email: email.data, token, type: "signup" }));
-  if (error) return { codeSent: true, email: email.data, error: error.status === 429 ? "error.rateLimit" : "error.codeInvalid" };
+  const { error } = await supabase.auth.signInWithPassword({ email: e.data, password: pw });
+  if (error) return { error: error.status === 429 ? "error.rateLimit" : "error.credentials" };
   redirect("/");
 }

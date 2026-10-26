@@ -23,14 +23,16 @@ pnpm exec supabase status    # copia URL e chiavi in .env.local (vedi .env.examp
 pnpm dev                     # http://localhost:3000
 ```
 
-- Le email con il codice di accesso a 6 cifre arrivano in Mailpit: http://127.0.0.1:54324
+- Il login non invia email. Mailpit (http://127.0.0.1:54324) resta disponibile per eventuali email di Supabase.
 - La registrazione è **solo su invito**. Crea un codice in locale:
   `insert into invite_codes (code, max_uses) values ('DEV-LOCAL', 5);` (Studio: http://127.0.0.1:54323)
 - Per aprire la registrazione: `update app_config set value = 'open' where key = 'signup_mode';`
 
 ## Accesso
 
-Un account per ogni email. Si inserisce l'email, arriva un **codice di 6 cifre** (valido 10 minuti) e lo si digita nella stessa pagina: niente link da aprire, quindi funziona anche nell'app installata su iPhone. Solo la prima volta serve anche il codice invito. Il testo dell'email è `supabase/templates/code.html`; durata, lunghezza e modello sono in `supabase/config.toml` e per il progetto cloud si applicano con `pnpm exec supabase config push` (rispondi "No" alla parte storage: richiede un piano a pagamento ed è inutile qui). Tentativi limitati: 5 verifiche per email e 20 per IP ogni 10 minuti.
+Un account per ogni email, con **email e password scelta dall'utente** (8-72 caratteri). Nessuna email di verifica: niente link da aprire, quindi funziona anche nell'app installata su iPhone, e non ci sono limiti di invio email. La **registrazione richiede il codice invito** (controllato da un trigger del database), gli accessi successivi no. Tentativi limitati: 8 accessi per email e 30 per IP ogni 10 minuti.
+
+**Password dimenticata:** non c'è il reset via email (servirebbe un SMTP personalizzato). Si reimposta dalla dashboard Supabase, Authentication, Users. Per il cloud la configurazione è `[remotes.production]` in `supabase/config.toml` (conferma email spenta, password minima 8) e si applica con `pnpm exec supabase config push`; alla domanda sullo storage rispondi "No".
 
 ## Inviti
 
@@ -54,7 +56,7 @@ Per aprire o chiudere la registrazione: `update app_config set value = 'open' wh
 ## Deploy (Vercel + Supabase cloud)
 
 1. Crea il progetto Supabase (vedi "Backend vero") e applica le migrazioni: `pnpm exec supabase link --project-ref <ref>` poi `pnpm exec supabase db push`.
-2. In Supabase, Authentication, URL Configuration: imposta Site URL e aggiungi `https://<tuo-dominio>/auth/callback` ai Redirect URLs. Il mittente delle email è quello predefinito di Supabase (per un dominio proprio serve un SMTP personalizzato).
+2. In Supabase, Authentication, URL Configuration: imposta Site URL e aggiungi `https://<tuo-dominio>/auth/callback` ai Redirect URLs.
 3. Importa il repo su Vercel e imposta le variabili di `.env.example` (chiavi di produzione, **non** quelle locali; usa chiavi di test per le preview). Imposta `SITE_URL` e un `CRON_SECRET` lungo.
 4. `vercel.json` schedula il job prezzi una volta al giorno (il piano Hobby ammette un cron al giorno).
 5. Crea il primo codice invito con `pnpm invite` puntando `.env.local` al progetto cloud.

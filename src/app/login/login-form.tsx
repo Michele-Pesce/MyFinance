@@ -1,52 +1,35 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { requestCode, verifyCode, type LoginState } from "./actions";
+import { useActionState, useState } from "react";
+import { signIn, signUp, type LoginState } from "./actions";
 import { t } from "@/lib/i18n";
 
-const RESEND_SECONDS = 60; // matches the email provider's minimum gap between two emails to the same address
-
 export function LoginForm() {
-  const [asked, ask, asking] = useActionState<LoginState, FormData>(requestCode, {});
-  const [checked, check, checking] = useActionState<LoginState, FormData>(verifyCode, {});
-  const [again, setAgain] = useState(false); // user went back to change email / ask a new code
-  const [sentAt, setSentAt] = useState(0);
-  const [now, setNow] = useState(0);
-
-  const codeStep = asked.codeSent && !again;
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const wait = Math.max(0, RESEND_SECONDS - Math.floor((now - sentAt) / 1000));
-
-  if (codeStep) {
-    return (
-      <form className="card" action={check} autoComplete="one-time-code">
-        <input type="hidden" name="email" value={asked.email} />
-        <p className="note" style={{ marginTop: 0 }} role="status">{t("login.codeSent", { email: asked.email ?? "" })}</p>
-        <label className="f">{t("login.code")}
-          <input type="text" name="code" inputMode="numeric" pattern="[0-9]*" maxLength={6} autoComplete="one-time-code" autoFocus required
-            style={{ fontFamily: "var(--font-num)", fontSize: 24, letterSpacing: 8, textAlign: "center" }} /></label>
-        {checked.error && <p className="neg" role="alert">{t(checked.error)}</p>}
-        <div className="actions">
-          <button className="btn primary" disabled={checking}>{t("login.enter")}</button>
-          <button type="button" className="btn" onClick={() => setAgain(true)}>{t("login.changeEmail")}</button>
-        </div>
-        <p className="note">{wait > 0 ? t("login.resendIn", { s: wait }) : t("login.resendHint")}</p>
-      </form>
-    );
-  }
+  const [mode, setMode] = useState<"in" | "up">("in");
+  const [inState, inAction, inPending] = useActionState<LoginState, FormData>(signIn, {});
+  const [upState, upAction, upPending] = useActionState<LoginState, FormData>(signUp, {});
+  // Controlled fields: React clears an uncontrolled form after every action, which would wipe what the user typed on an error.
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [invite, setInvite] = useState("");
+  const up = mode === "up";
+  const state = up ? upState : inState;
 
   return (
-    <form className="card" action={(fd) => { setAgain(false); setSentAt(Date.now()); setNow(Date.now()); ask(fd); }}>
-      <div className="form">
-        <label className="f full">{t("login.email")}<input type="email" name="email" required autoComplete="email" defaultValue={asked.email} /></label>
-        <label className="f full">{t("login.inviteCode")}<input type="text" name="invite" autoComplete="off" /></label>
+    <form className="card" action={up ? upAction : inAction}>
+      <div className="seg" role="group" aria-label={t("login.modes")} style={{ marginBottom: 14 }}>
+        <button type="button" aria-pressed={!up} onClick={() => setMode("in")}>{t("login.tabIn")}</button>
+        <button type="button" aria-pressed={up} onClick={() => setMode("up")}>{t("login.tabUp")}</button>
       </div>
-      <p className="note">{t("login.inviteHint")}</p>
-      {asked.error && <p className="neg" role="alert">{t(asked.error)}</p>}
-      <div className="actions"><button className="btn primary" disabled={asking}>{t("login.send")}</button></div>
+      <div className="form">
+        <label className="f full">{t("login.email")}<input type="email" name="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+        <label className="f full">{t("login.password")}
+          <input type="password" name="password" required minLength={up ? 8 : undefined} maxLength={72} autoComplete={up ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+        {up && <label className="f full">{t("login.inviteCode")}<input type="text" name="invite" required autoComplete="off" value={invite} onChange={(e) => setInvite(e.target.value)} /></label>}
+      </div>
+      <p className="note">{t(up ? "login.upHint" : "login.inHint")}</p>
+      {state.error && <p className="neg" role="alert">{t(state.error)}</p>}
+      <div className="actions"><button className="btn primary" disabled={inPending || upPending}>{t(up ? "login.createAccount" : "login.enter")}</button></div>
     </form>
   );
 }
