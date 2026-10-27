@@ -18,6 +18,15 @@ describe("asset value", () => {
     expect(r.gainPct).toBeCloseTo(20);
   });
 
+  it("a linked price with no units never zeroes the asset: the manual value stays", () => {
+    const a = asset({ id: "a", class: "crypto", manualValue: 700, instrumentId: "ins" });
+    const r = computeAsset(a, [], { ins: 30 });
+    expect(r.value).toBe(700);
+    expect(r.price).toBeNull(); // price not used, so the UI offers the manual value input
+    // once units exist the feed takes over
+    expect(computeAsset({ ...a, initialUnits: 2 }, [], { ins: 30 }).value).toBe(60);
+  });
+
   it("automatic price of the linked instrument wins over the manual one", () => {
     const a = asset({ id: "a", class: "etf", initialUnits: 2, manualPrice: 10, instrumentId: "ins" });
     expect(computeAsset(a, [], { ins: 30 }).value).toBe(60);

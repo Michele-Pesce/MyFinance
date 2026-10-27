@@ -68,6 +68,8 @@ export async function runAutoSnapshots(admin: SupabaseClient, date: string): Pro
     const d = await loadData(admin, user_id);
     if (!d.assets.length) continue;
     const p = computePortfolio(d.assets, d.transactions, d.prices);
+    // Re-running the job replaces that day's earlier auto snapshot (fixes a wrong one); a manual snapshot is never touched.
+    await admin.from("snapshots").delete().eq("user_id", user_id).eq("date", date).eq("source", "auto");
     const { error: e } = await admin.from("snapshots").upsert(
       { user_id, date, net_worth: r(p.netWorth), liquidity: r(p.liquidity), invested: r(p.invested), crypto: r(p.crypto), receivables: r(p.receivables), source: "auto" },
       { onConflict: "user_id,date", ignoreDuplicates: true },

@@ -275,4 +275,5 @@ export const it = {
   "tx.accountIn": "Accreditato su",
   "tx.accountNone": "Non aggiornare nessun conto",
   "tx.accountMissing": "Per aggiornare i saldi crea nel Portafoglio degli asset di liquidità (per esempio Contanti e Carta) e poi scegli da quale pagare.",
+  "portfolio.needUnits": "Prezzo collegato, ma mancano le quote: finché non le inserisci (Modifica) il valore resta quello manuale.",
 } as const;

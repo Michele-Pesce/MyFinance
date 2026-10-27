@@ -38,6 +38,7 @@ export default async function PortfolioPage() {
                 <div className="arow" key={r.id}>
                   <span className="dot" style={{ background: colorVar(r.color) }} />
                   <div className="nm"><b>{r.name}</b><small>{sub}</small>
+                    {r.instrumentId && auto && r.price === null && <small className="warn" style={{ display: "block" }}>{t("portfolio.needUnits")}</small>}
                     {r.instrumentId && !auto && <small className="mut" style={{ display: "block" }}>{t("portfolio.waitingPrice")}</small>}
                     {auto && <small className={isStale(auto, today) ? "warn" : undefined} style={{ display: "block" }}>
                       {isStale(auto, today) ? "⚠ " : ""}{t("portfolio.priceUpdated", { date: formatDate(auto).slice(0, 5) })}</small>}
@@ -50,9 +51,9 @@ export default async function PortfolioPage() {
                         : <><span className={r.gain >= 0 ? "pos" : "neg"}>{formatSigned(r.gain)}</span><i className={r.gain >= 0 ? "pos" : "neg"}>{formatPct(r.gainPct)}</i></>}</div>
                   </div>
                   <div className="quick">
-                    {r.price !== null && !auto
-                      ? <QuickInput id={r.id} field="price" value={r.price} />
-                      : !auto && <QuickInput id={r.id} field="value" value={r.value} />}
+                    {r.price !== null
+                      ? !auto && <QuickInput id={r.id} field="price" value={r.price} />
+                      : <QuickInput id={r.id} field="value" value={r.value} />}
                   </div>
                   <div className="acts">
                     <AssetSheet asset={data.assets.find((a) => a.id === r.id)} platforms={platforms} instrument={r.instrumentId ? data.instruments[r.instrumentId] : null}>{t("common.edit")}</AssetSheet>

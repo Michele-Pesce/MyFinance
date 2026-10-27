@@ -52,7 +52,10 @@ export function computeAsset(asset: Asset, txs: Transaction[], prices: PriceMap 
   const mv = txs.filter((t) => t.assetId === asset.id && isInvestment(t));
   const invested = asset.initialInvested + sum(mv.map((t) => t.amount));
   const units = asset.initialUnits + sum(mv.map((t) => t.units ?? 0));
-  const price = priceFor(asset, prices);
+  // A price is only usable with units to multiply it by. An asset tracked by its manual value alone (no units yet) keeps
+  // that value when a price feed is linked, instead of collapsing to units x price = 0.
+  const feed = priceFor(asset, prices);
+  const price = feed !== null && units > 0 ? feed : null;
 
   let value: number;
   if (price !== null) {
