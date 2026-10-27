@@ -28,6 +28,7 @@ export default async function SettingsPage() {
       <section className="card">
         <div className="card-head"><h2>{t("settings.importCsv")}</h2></div>
         <p className="note" style={{ marginTop: 0 }}>{t("settings.passPortfolio")}</p>
+        <p className="note">{t("settings.trackerHint")}</p>
         <CsvImport />
       </section>
 

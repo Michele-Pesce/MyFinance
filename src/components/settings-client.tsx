@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addCategory, deleteAccount, deleteCategory, importAssets, importTransactions, renameCategory, restoreBackup, type CountResult } from "@/app/account-actions";
+import { addCategory, deleteAccount, deleteCategory, importAssets, importTransactions, renameCategory, restoreBackup, type AssetImportResult, type CountResult } from "@/app/account-actions";
 import type { ActionResult } from "@/app/actions";
 import { ActionButton } from "@/components/client-bits";
 import type { Category } from "@/lib/data";
@@ -11,8 +11,8 @@ import { t, type MessageKey } from "@/lib/i18n";
 
 const useMsg = () => {
   const [msg, setMsg] = useState<{ key: MessageKey; vars?: Record<string, string | number>; ok?: boolean } | null>(null);
-  const show = (r: ActionResult | CountResult, okKey?: MessageKey) =>
-    setMsg(r.ok ? (okKey ? { key: okKey, vars: { n: "count" in r ? r.count : 0 }, ok: true } : null) : { key: r.error as MessageKey });
+  const show = (r: ActionResult | CountResult | AssetImportResult, okKey?: MessageKey) =>
+    setMsg(r.ok ? (okKey ? { key: okKey, vars: { n: "count" in r ? r.count : 0, linked: "linked" in r ? r.linked : 0, unlinked: "unlinked" in r ? r.unlinked : 0 }, ok: true } : null) : { key: r.error as MessageKey });
   const node = msg && <p className={msg.ok ? "pos" : "neg"} role={msg.ok ? "status" : "alert"}>{t(msg.key, msg.vars)}</p>;
   return { show, node, set: setMsg };
 };
@@ -95,11 +95,11 @@ export function CsvImport() {
           <div className="scroll-x"><table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
             <tbody>{builtAssets.valid.slice(0, 8).map((r, i) => (
               <tr key={i} style={{ borderTop: "1px solid var(--line)" }}>
-                <td>{r.name}</td><td>{t(`class.${r.class}` as MessageKey)}</td><td className="num" style={{ textAlign: "right" }}>{formatMoney(r.manualValue)}</td>
+                <td>{r.name}</td><td>{t(`class.${r.class}` as MessageKey)}</td><td className="num" style={{ textAlign: "right" }}>{formatMoney(r.manualValue)}</td><td className="mut">{r.tracker ?? ""}</td>
               </tr>))}</tbody></table></div>
           <div className="actions">
             <button type="button" className="btn primary" disabled={pending || !builtAssets.valid.length}
-              onClick={() => start(async () => { const r = await importAssets(builtAssets.valid); m.show(r, "settings.imported"); if (r.ok) { setTable(null); setMap(null); } })}>
+              onClick={() => start(async () => { const r = await importAssets(builtAssets.valid); m.show(r, "settings.importedAssets"); if (r.ok) { setTable(null); setMap(null); } })}>
               {t("settings.importAssetsDo", { n: builtAssets.valid.length })}</button>
           </div>
         </>

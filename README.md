@@ -14,6 +14,8 @@ App web multi-utente per tracciare patrimonio (liquidità, ETF, crypto, crediti)
 
 ## Avvio in locale
 
+> Le porte locali di Supabase sono **553xx** (API 55321, database 55322, Studio 55323, Mailpit 55324): Windows riserva a rotazione degli intervalli di porte e dopo un riavvio aveva incluso le 543xx, impedendo l'avvio.
+
 Servono Node 24, pnpm e Docker Desktop acceso.
 
 ```bash
@@ -23,9 +25,9 @@ pnpm exec supabase status    # copia URL e chiavi in .env.local (vedi .env.examp
 pnpm dev                     # http://localhost:3000
 ```
 
-- Il login non invia email. Mailpit (http://127.0.0.1:54324) resta disponibile per eventuali email di Supabase.
+- Il login non invia email. Mailpit (http://127.0.0.1:55324) resta disponibile per eventuali email di Supabase.
 - La registrazione è **solo su invito**. Crea un codice in locale:
-  `insert into invite_codes (code, max_uses) values ('DEV-LOCAL', 5);` (Studio: http://127.0.0.1:54323)
+  `insert into invite_codes (code, max_uses) values ('DEV-LOCAL', 5);` (Studio: http://127.0.0.1:55323)
 - Per aprire la registrazione: `update app_config set value = 'open' where key = 'signup_mode';`
 
 ## Accesso
@@ -49,7 +51,7 @@ Per aprire o chiudere la registrazione: `update app_config set value = 'open' wh
 - **Conti che si aggiornano da soli**: registrando una spesa (o un'entrata) il form chiede da quale conto è uscita (**Pagato da**: per esempio Contanti o Carta, cioè asset di liquidità che crei tu) e il saldo di quel conto scende (o sale) in automatico. La scelta è per movimento: "Non aggiornare nessun conto" lascia tutto com'era, e il form propone l'ultimo conto usato. Si somma al valore manuale solo ciò che è datato **dopo** l'ultimo aggiornamento manuale del saldo, quindi correggere il saldo dal Portafoglio non conta due volte. **Cambia la regola 5 del Handoff** (prima income/expense non toccavano mai gli asset): è opt-in per movimento, deciso su richiesta di Michele. Non ancora gestito: un PAC o un acquisto non toglie i soldi dal conto da cui li hai versati.
 - **Onboarding** al primo accesso (saltabile): nome, primo asset. Le categorie di spesa sono già pronte.
 - **Impostazioni**: categorie modificabili (rinominare aggiorna anche i movimenti), export JSON completo e CSV, import CSV con anteprima e mappa colonne, ripristino da JSON (solo su account vuoto, per non duplicare), cancellazione account con conferma scritta (elimina profilo e tutte le righe collegate).
-- **Passare il portafoglio con i CSV**: Impostazioni esporta due file, "Asset (CSV)" e "Movimenti (CSV)", e li rilegge con lo stesso identico formato (riconosciuto dall'intestazione, nessuna mappa colonne da fare). Ordine: prima gli asset, poi i movimenti (che si agganciano agli asset per nome). Un asset con lo stesso nome già presente viene saltato, quindi reimportare non duplica. I collegamenti ai prezzi automatici non viaggiano nel CSV. Per una copia completa usa il JSON.
+- **Passare il portafoglio con i CSV**: Impostazioni esporta due file, "Asset (CSV)" e "Movimenti (CSV)", e li rilegge con lo stesso identico formato (riconosciuto dall'intestazione, nessuna mappa colonne da fare). Ordine: prima gli asset, poi i movimenti (che si agganciano agli asset per nome). Un asset con lo stesso nome già presente viene saltato, quindi reimportare non duplica. La colonna facoltativa **`tracker`** (ultima del file degli asset) porta l'**ISIN o il ticker** di ETF e azioni e il **simbolo** delle crypto (per esempio `BTC`): all'importazione l'app cerca lo strumento e **collega da sola il prezzo automatico**, quindi con un solo upload hai asset e prezzi. Vale anche per asset già presenti con lo stesso nome e senza prezzo collegato. Il collegamento si fa solo se la corrispondenza è esatta (ISIN uguale, ticker uguale, simbolo uguale), con la quotazione in euro e la borsa preferita tra Xetra, Milano, Parigi, Amsterdam, Londra; per gli ETF ogni ricerca usa una delle chiamate gratuite giornaliere EODHD, e se finiscono i restanti si collegano a mano dal Portafoglio (il messaggio finale dice quanti). L'esportazione scrive il tracker (ISIN o simbolo) dei prezzi già collegati, così un file esportato ricollega tutto in un colpo. Per avere il valore da prezzo servono anche le **quote** (`initial_units`). Per una copia completa usa il JSON.
 - **FIRE** (`/fire`): numero FIRE = spese annuali ÷ tasso di prelievo, progresso, anni e mese stimati per arrivarci con i versamenti attuali, Coast FIRE (con età attuale e di pensionamento), grafico e tabella di sensibilità (rendimento × prelievo). Parte dai tuoi dati (capitale investito, media spese ultimi 12 mesi, PAC mensili) e ogni ipotesi è modificabile. Tutto in euro di oggi: il rendimento va inserito **al netto dell'inflazione**. Le ipotesi (tassi, età) restano solo nel tuo browser. Non è consulenza e non indica cosa comprare o vendere.
 - **Demo** `/demo`: dashboard in sola lettura con dati inventati, senza account. **Come funziona** `/come-funziona`: due schermate.
 - **PWA**: installabile (manifest e icone). Il service worker non mette nulla in cache: i dati finanziari arrivano sempre dal server.

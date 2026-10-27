@@ -218,7 +218,7 @@ export const it = {
   "settings.csvErr.class": "classe",
   "settings.csvErr.number": "numero",
   "settings.importAssetsDo": "Importa {n} asset",
-  "settings.passPortfolio": "Per passare il portafoglio a un altro account esporta i due file CSV (asset e movimenti) e importali in questo ordine: prima gli asset, poi i movimenti. Gli asset con lo stesso nome già presenti vengono saltati. I collegamenti ai prezzi automatici vanno rifatti.",
+  "settings.passPortfolio": "Per passare il portafoglio a un altro account esporta i due file CSV (asset e movimenti) e importali in questo ordine: prima gli asset, poi i movimenti. Gli asset con lo stesso nome già presenti vengono saltati.",
   "nav.fire": "FIRE",
 
   "fire.assumptions": "Ipotesi",
@@ -276,4 +276,6 @@ export const it = {
   "tx.accountNone": "Non aggiornare nessun conto",
   "tx.accountMissing": "Per aggiornare i saldi crea nel Portafoglio degli asset di liquidità (per esempio Contanti e Carta) e poi scegli da quale pagare.",
   "portfolio.needUnits": "Prezzo collegato, ma mancano le quote: finché non le inserisci (Modifica) il valore resta quello manuale.",
+  "settings.importedAssets": "Creati {n} asset. Prezzi collegati: {linked}. Da collegare a mano: {unlinked}.",
+  "settings.trackerHint": "Colonna facoltativa \"tracker\": ISIN o ticker per ETF e azioni, simbolo per le crypto (per esempio BTC). L'importazione collega da sola il prezzo automatico: per gli ETF usa le chiamate gratuite giornaliere, quindi se sono tanti i restanti si collegano dal Portafoglio. Funziona anche su asset già presenti con lo stesso nome e senza prezzo collegato.",
 } as const;

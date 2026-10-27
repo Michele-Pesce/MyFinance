@@ -93,7 +93,7 @@ export function guessMapping(header: string[]): Mapping {
 /* ------------------------- assets CSV (same format as the export) ------------------------- */
 
 export const ASSET_CSV_HEADER = [
-  "name", "class", "platform", "color", "group", "monthly_contribution", "initial_invested", "initial_units", "manual_price", "manual_value", "manual_value_at", "archived",
+  "name", "class", "platform", "color", "group", "monthly_contribution", "initial_invested", "initial_units", "manual_price", "manual_value", "manual_value_at", "archived", "tracker",
 ] as const;
 export const TX_CSV_HEADER = ["date", "type", "category", "description", "amount", "asset", "units"] as const;
 
@@ -111,6 +111,7 @@ export interface AssetImportRow {
   name: string; class: AssetClass; platform: string | null; color: string | null; groupLabel: string | null;
   monthlyContribution: number; initialInvested: number; initialUnits: number; manualPrice: number | null; manualValue: number;
   manualValueAt: string | null; archived: boolean;
+  tracker: string | null; // ISIN or ticker (ETF/stock) or symbol (crypto): the import links the price feed from it
 }
 export interface AssetImportError { line: number; reason: "name" | "class" | "number" | "date" }
 
@@ -139,7 +140,7 @@ export function parseAssetsCsv(rows: string[][]): { valid: AssetImportRow[]; err
     valid.push({
       name, class: cls, platform: col(r, "platform") || null, color: col(r, "color") || null, groupLabel: col(r, "group") || null,
       monthlyContribution: (mc as number | null) ?? 0, initialInvested: (ii as number | null) ?? 0, initialUnits: (iu as number | null) ?? 0,
-      manualPrice: (mp as number | null) ?? null, manualValue: (mv as number | null) ?? 0, manualValueAt: at, archived: ["true", "1", "si", "sì"].includes(col(r, "archived").toLowerCase()),
+      manualPrice: (mp as number | null) ?? null, manualValue: (mv as number | null) ?? 0, manualValueAt: at, archived: ["true", "1", "si", "sì"].includes(col(r, "archived").toLowerCase()), tracker: col(r, "tracker") || null,
     });
   });
   return { valid, errors };

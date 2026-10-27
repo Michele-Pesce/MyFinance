@@ -29,7 +29,7 @@ export interface AppData {
   categories: Category[];
   prices: PriceMap;
   priceDates: Record<string, string>; // instrument id -> date of the latest price, for the "updated on" label
-  instruments: Record<string, { name: string; symbol: string | null; provider: string }>; // linked instruments, by id
+  instruments: Record<string, { name: string; symbol: string | null; isin: string | null; provider: string }>; // linked instruments, by id
 }
 
 // PostgREST silently cuts every response at `max_rows` (1000 here and on the Supabase cloud default), so a plain
@@ -78,8 +78,8 @@ export async function loadData(supabase: SupabaseClient, userId?: string): Promi
   const priceDates: Record<string, string> = {};
   const instruments: AppData["instruments"] = {};
   if (instrumentIds.length) {
-    const { data: ins } = await supabase.from("instruments").select("id, name, symbol, provider").in("id", instrumentIds);
-    for (const i of ins ?? []) instruments[i.id] = { name: i.name, symbol: i.symbol, provider: i.provider };
+    const { data: ins } = await supabase.from("instruments").select("id, name, symbol, isin, provider").in("id", instrumentIds);
+    for (const i of ins ?? []) instruments[i.id] = { name: i.name, symbol: i.symbol, isin: i.isin, provider: i.provider };
     const { data } = await supabase.from("prices").select("instrument_id, date, close").in("instrument_id", instrumentIds).order("date", { ascending: false }).limit(instrumentIds.length * 10);
     for (const p of data ?? []) {
       if (prices[p.instrument_id] === undefined) {

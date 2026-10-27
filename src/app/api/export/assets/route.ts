@@ -14,6 +14,8 @@ export async function GET() {
   const data = await loadData(supabase);
   const rows = data.assets.map((a) => [
     a.name, a.class, a.platform, a.color, a.groupLabel, a.monthlyContribution, a.initialInvested, a.initialUnits, a.manualPrice, a.manualValue, a.manualValueAt, a.archived ? "true" : "false",
+    // ISIN when the instrument has one (ETF/stock), else its ticker/symbol: the import links the price feed back from it
+    a.instrumentId ? data.instruments[a.instrumentId]?.isin ?? data.instruments[a.instrumentId]?.symbol ?? "" : "",
   ]);
   return new NextResponse(toCsv([...ASSET_CSV_HEADER], rows), {
     headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="assets-${todayIso()}.csv"`, "Cache-Control": "no-store" },

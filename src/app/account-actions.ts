@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { backupSchema, backupToRows } from "@/lib/backup";
 import type { AssetImportRow, ImportRow } from "@/lib/import";
+import { resolveAndLink } from "@/lib/prices/resolve";
 import { allow } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -97,15 +98,22 @@ const assetRowSchema = z.object({
   name: z.string().trim().min(1).max(100), class: z.enum(ASSET_CLASSES), platform: z.string().max(200).nullable(), color: z.string().max(20).nullable(), groupLabel: z.string().max(200).nullable(),
   monthlyContribution: z.number().min(0).finite(), initialInvested: z.number().finite(), initialUnits: z.number().finite(), manualPrice: z.number().finite().nullable(),
   manualValue: z.number().finite(), manualValueAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), archived: z.boolean(),
+  tracker: z.string().trim().max(40).nullable(),
 });
 
-/** Assets CSV (same format as the export). Names already in the account are skipped, so re-importing never duplicates. Returns the number created. */
-export async function importAssets(rows: AssetImportRow[]): Promise<CountResult> {
+export type AssetImportResult = { ok: true; count: number; linked: number; unlinked: number } | { ok: false; error: string };
+
+/**
+ * Assets CSV (same format as the export). Names already in the account are skipped, so re-importing never duplicates.
+ * A "tracker" cell (ISIN/ticker, or crypto symbol) links the price feed in the same upload, also for an existing asset
+ * of that name that has no feed yet. Returns assets created, feeds linked, and trackers left to link by hand.
+ */
+export async function importAssets(rows: AssetImportRow[]): Promise<AssetImportResult> {
   const { supabase, userId } = await authed();
   if (!(await allow(["import", userId], 10, 3_600))) return failed("error.rateLimit");
   const parsed = z.array(assetRowSchema).min(1).max(500).safeParse(rows);
   if (!parsed.success) return failed("error.invalid");
-  const { data: existing } = await supabase.from("assets").select("name");
+  const { data: existing } = await supabase.from("assets").select("id, name, instrument_id");
   const seen = new Set((existing ?? []).map((a) => a.name.trim().toLowerCase()));
   const fresh = parsed.data.filter((r) => {
     const k = r.name.toLowerCase();
@@ -113,15 +121,24 @@ export async function importAssets(rows: AssetImportRow[]): Promise<CountResult>
     seen.add(k);
     return true;
   });
+  let created: { id: string; name: string }[] = [];
   if (fresh.length) {
-    const { error } = await supabase.from("assets").insert(fresh.map((r) => ({
+    const { data, error } = await supabase.from("assets").insert(fresh.map((r) => ({
       user_id: userId, name: r.name, class: r.class, platform: r.platform, color: r.color, group_label: r.groupLabel, monthly_contribution: r.monthlyContribution,
       initial_invested: r.initialInvested, initial_units: r.initialUnits, manual_price: r.manualPrice, manual_value: r.manualValue, manual_value_at: r.manualValueAt, archived: r.archived,
-    })));
+    }))).select("id, name");
     if (error) return failed("error.save");
+    created = data ?? [];
   }
+
+  // Link price feeds: new assets, plus existing ones of the same name that have none yet.
+  const idOf = new Map<string, string>(created.map((a) => [a.name.toLowerCase(), a.id]));
+  for (const a of existing ?? []) if (!a.instrument_id) idOf.set(a.name.trim().toLowerCase(), a.id);
+  const targets = parsed.data.filter((r) => r.tracker && idOf.has(r.name.toLowerCase())).map((r) => ({ assetId: idOf.get(r.name.toLowerCase())!, cls: r.class, tracker: r.tracker! }));
+  const { linked, unresolved } = targets.length ? await resolveAndLink(createAdminClient(), supabase, targets) : { linked: 0, unresolved: 0 };
+
   refresh();
-  return { ok: true, count: fresh.length };
+  return { ok: true, count: created.length, linked, unlinked: unresolved };
 }
 
 /** Restore a JSON backup into an EMPTY account (re-importing into a filled one would duplicate everything). */

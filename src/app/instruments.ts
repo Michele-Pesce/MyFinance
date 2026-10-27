@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { searchCoingecko } from "@/lib/prices/coingecko";
 import { searchEodhd } from "@/lib/prices/eodhd";
+import { upsertInstrument } from "@/lib/prices/resolve";
 import { supabaseStore } from "@/lib/prices/server";
 import type { Candidate } from "@/lib/prices/types";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -86,15 +87,11 @@ export async function linkInstrument(assetId: string, signed: SignedCandidate): 
   }
   if (!valid) return { ok: false, error: "error.invalid" };
 
-  const admin = createAdminClient();
-  const { data: inst, error } = await admin.from("instruments").upsert({
-    kind: c.kind, isin: c.isin ?? null, symbol: c.symbol, exchange: c.exchange ?? null, currency: c.currency, provider: c.provider,
-    provider_id: c.providerId, name: c.name, alt_provider: c.altProvider ?? null, alt_provider_id: c.altProviderId ?? null, active: true,
-  }, { onConflict: "provider,provider_id" }).select("id").single();
-  if (error || !inst) return { ok: false, error: "error.save" };
+  const instId = await upsertInstrument(createAdminClient(), c);
+  if (!instId) return { ok: false, error: "error.save" };
 
   // The user's own client: RLS guarantees the asset is theirs.
-  const { error: e2 } = await supabase.from("assets").update({ instrument_id: inst.id }).eq("id", id.data);
+  const { error: e2 } = await supabase.from("assets").update({ instrument_id: instId }).eq("id", id.data);
   if (e2) return { ok: false, error: "error.save" };
   revalidatePath("/", "layout");
   return { ok: true };

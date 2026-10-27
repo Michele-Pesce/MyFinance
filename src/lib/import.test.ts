@@ -60,6 +60,16 @@ describe("assets CSV round trip (same format as the export)", () => {
     expect(valid[0]).toMatchObject({ name: "ETF A", class: "etf", monthlyContribution: 100, initialInvested: 500.5, initialUnits: 5, manualPrice: 120.25, manualValueAt: "2026-01-05", archived: false });
     expect(valid[1]).toMatchObject({ name: "Conto", manualPrice: null, manualValue: 1234.56, manualValueAt: null, archived: true, platform: null });
   });
+  it("reads the optional tracker column (ISIN, ticker or crypto symbol); old files without it still import", () => {
+    const withTracker = parseCsv(toCsv([...ASSET_CSV_HEADER], [
+      ["ETF A", "etf", "", "", "", 0, 0, 0, "", 0, "", "false", "IE00BK5BQT80"],
+      ["Coin", "crypto", "", "", "", 0, 0, 0, "", 0, "", "false", "BTC"],
+      ["Cash", "liquidity", "", "", "", 0, 0, 0, "", 5, "", "false", ""],
+    ]));
+    expect(parseAssetsCsv(withTracker).valid.map((a) => a.tracker)).toEqual(["IE00BK5BQT80", "BTC", null]);
+    const old = parseCsv(['"name";"class";"manual_value"', '"X";"etf";"10"'].join("\n"));
+    expect(parseAssetsCsv(old).valid[0]).toMatchObject({ name: "X", tracker: null, manualValue: 10 });
+  });
   it("flags bad rows", () => {
     const rows = parseCsv(toCsv([...ASSET_CSV_HEADER], [["", "etf", "", "", "", 0, 0, 0, "", 0, "", ""], ["X", "nope", "", "", "", 0, 0, 0, "", 0, "", ""], ["Y", "etf", "", "", "", "abc", 0, 0, "", 0, "", ""], ["Z", "etf", "", "", "", 0, 0, 0, "", 0, "31/02/2026", ""]]));
     expect(parseAssetsCsv(rows).errors.map((e) => e.reason)).toEqual(["name", "class", "number", "date"]);
