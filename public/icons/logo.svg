@@ -1,15 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MyFinance">
-  <!-- A gold coin with rising bars. The PNG icons are rendered from this file: node scripts/make-icons.mjs -->
+  <!-- Five rising bars, the last one gold. The PNG icons are rendered from this file: node scripts/make-icons.mjs -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#12a37f"/><stop offset="1" stop-color="#053f33"/></linearGradient>
     <radialGradient id="glow" cx="0.3" cy="0.2" r="0.8"><stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#e89b12"/></linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#9ff0d3"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#f0a818"/></linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
   <rect width="512" height="512" rx="112" fill="url(#glow)"/>
   <g id="mark">
-    <circle cx="256" cy="256" r="168" fill="url(#gold)"/>
-    <circle cx="256" cy="256" r="136" fill="none" stroke="#b9750a" stroke-opacity="0.4" stroke-width="8"/>
-    <g fill="#053f33"><rect x="186" y="272" width="36" height="76" rx="10"/><rect x="238" y="226" width="36" height="122" rx="10"/><rect x="290" y="172" width="36" height="176" rx="10"/></g>
+    <rect x="84" y="170" width="52" height="232" rx="22" fill="url(#bar)"/>
+    <rect x="156" y="236" width="52" height="166" rx="22" fill="url(#bar)"/>
+    <rect x="230" y="296" width="52" height="106" rx="22" fill="url(#bar)"/>
+    <rect x="304" y="208" width="52" height="194" rx="22" fill="url(#bar)"/>
+    <rect x="376" y="106" width="52" height="296" rx="22" fill="url(#gold)"/>
   </g>
 </svg>
