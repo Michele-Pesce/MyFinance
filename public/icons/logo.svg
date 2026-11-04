@@ -1,6 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MyFinance">
-  <!-- An "M" drawn as a chart line, with a marker on the last peak. The PNG icons are drawn from the same geometry. -->
-  <rect width="512" height="512" rx="112" fill="#0d7a64"/>
-  <polyline points="100,388 156,172 256,308 356,172 412,388" fill="none" stroke="#ffffff" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="356" cy="172" r="34" fill="#f5c542"/>
+  <!-- A gold coin with rising bars. The PNG icons are rendered from this file: node scripts/make-icons.mjs -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#12a37f"/><stop offset="1" stop-color="#053f33"/></linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.2" r="0.8"><stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#e89b12"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <g id="mark">
+    <circle cx="256" cy="256" r="168" fill="url(#gold)"/>
+    <circle cx="256" cy="256" r="136" fill="none" stroke="#b9750a" stroke-opacity="0.4" stroke-width="8"/>
+    <g fill="#053f33"><rect x="186" y="272" width="36" height="76" rx="10"/><rect x="238" y="226" width="36" height="122" rx="10"/><rect x="290" y="172" width="36" height="176" rx="10"/></g>
+  </g>
 </svg>
