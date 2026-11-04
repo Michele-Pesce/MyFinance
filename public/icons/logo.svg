@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MyFinance">
+  <!-- An "M" drawn as a chart line, with a marker on the last peak. The PNG icons are drawn from the same geometry. -->
+  <rect width="512" height="512" rx="112" fill="#0d7a64"/>
+  <polyline points="100,388 156,172 256,308 356,172 412,388" fill="none" stroke="#ffffff" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="356" cy="172" r="34" fill="#f5c542"/>
+</svg>
